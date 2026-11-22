@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Item de step colapsable dentro de logViewerStepsRecycler (ver
+     ActionsLogViewerController.StepAdapter). stepHeaderRow es el único
+     área clickeable para expandir/colapsar (igual criterio que cualquier
+     acordeón): tocar en cualquier parte de la fila alterna
+     stepLogText.visibility. El step con conclusion == "failure" llega con
+     stepHeaderRow.background distinto (ver bindViewHolder) para
+     resaltarlo como "donde ocurrió el error" sin depender de que el
+     usuario lo busque expandiendo uno por uno. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/stepHeaderRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:background="@color/bg_elevated"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:id="@+id/stepStatusIcon"
+            android:layout_width="22dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="14sp"
+            android:text="●"
+            android:textColor="@color/text_dim" />
+
+        <TextView
+            android:id="@+id/stepNameText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/stepExpandIcon"
+            android:layout_width="24dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="⌄"
+            android:textColor="@color/text_dim"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_panel" />
+
+    <!-- Fuente monoespaciada (igual que consoleOutput en view_console.xml)
+         para que el log se alinee en columnas, consistente con cómo ya se
+         ve cualquier otra salida de texto en la app. GONE por defecto:
+         solo el step fallido arranca expandido (ver
+         ActionsLogViewerController.showLog). -->
+    <TextView
+        android:id="@+id/stepLogText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_panel"
+        android:padding="12dp"
+        android:fontFamily="monospace"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:textIsSelectable="true"
+        android:visibility="gone" />
+
+</LinearLayout>

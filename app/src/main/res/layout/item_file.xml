@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- layout_width wrap_content (antes match_parent): cada fila mide su
+     ancho real (indentación + ícono + nombre, ver FileExplorerAdapter.
+     displayName) para que el RecyclerView contenedor (wrap_content dentro
+     de un HorizontalScrollView, ver activity_editor.xml) tome como ancho
+     el máximo de sus filas y el scroll horizontal del árbol funcione. El
+     nombre se muestra completo si entra en el ancho visible del panel, o
+     se extiende más allá de él (hasta un límite generoso de caracteres)
+     si no — ver doc de displayName. Área tocable y fondo de selección/
+     carpeta activa/repo git (ver FileExplorerAdapter.onBindViewHolder)
+     llegan hasta el borde derecho del panel vía itemView.minimumWidth
+     (ver onBindViewHolder), no por este XML. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="48dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:foreground="?android:attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/fileIcon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:gravity="center"
+        android:text="📄"
+        android:textSize="16sp" />
+
+    <!-- Marca de "raíz de repo git" (ver FileExplorerAdapter/
+         FileRepository.isGitRepoRoot), a la derecha de fileIcon. Oculto por
+         defecto (GONE): solo se muestra para una carpeta que es raíz de
+         repo. 16dp, más chico que fileIcon (28dp) para no competir con él. -->
+    <ImageView
+        android:id="@+id/gitRepoIcon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginStart="2dp"
+        android:src="@drawable/ic_git_branch"
+        android:tint="@color/text_dim"
+        android:visibility="gone"
+        android:contentDescription="@null" />
+
+    <!-- El truncado ya no depende del ancho del layout (antes: layout_width=
+         "0dp" + layout_weight + ellipsize), sino de un máximo fijo de
+         caracteres aplicado en FileExplorerAdapter.truncateName — así el
+         nombre no se corta distinto según el ancho del panel, y la fila
+         puede ser más ancha que el panel visible para el scroll horizontal
+         del árbol (ver HorizontalScrollView en activity_editor.xml). -->
+    <TextView
+        android:id="@+id/fileName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:singleLine="true" />
+
+</LinearLayout>

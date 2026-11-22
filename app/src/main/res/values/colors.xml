@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#1E1E24</color>
+    <color name="bg_elevated">#26262E</color>
+    <color name="bg_gutter">#20202A</color>
+    <color name="bg_panel">#15151A</color>
+    <color name="accent">#6EA8FE</color>
+    <!-- Highlight de ítem seleccionado en modo multi-selección del explorador
+         (pendiente #3): mismo tono que accent, con transparencia para no
+         tapar el texto del nombre del archivo. -->
+    <color name="accent_selected">#406EA8FE</color>
+    <!-- Fondo sutil para carpetas que son raíz de un repositorio git (tienen
+         un .git dentro, ver FileRepository.isGitRepoRoot). Tono distinto de
+         accent_selected y con menos opacidad, para que la selección múltiple
+         siga notándose encima si el usuario selecciona esa misma carpeta. -->
+    <color name="git_repo_root">#1F3BB273</color>
+    <!-- Paso 13: carpeta "activa" del árbol (ver FileExplorerAdapter.
+         selectedDir/ExplorerController) — la que usan crear archivo/
+         comandos git/búsqueda, distinta de la multi-selección para
+         renombrar/eliminar/mover/copiar (accent_selected). Mismo tono
+         accent, menos opacidad que accent_selected para que la
+         multi-selección se note encima si coinciden sobre la misma fila. -->
+    <color name="accent_active_dir">#286EA8FE</color>
+    <color name="text_primary">#E4E4EC</color>
+    <color name="text_dim">#8A8A98</color>
+    <color name="border">#34343E</color>
+    <color name="run_green">#3BB273</color>
+    <!-- Resalta el step fallido en el visor de log de GitHub Actions (ver
+         ActionsLogViewerController) — mismo tono de tab_01, declarado
+         aparte porque el uso es semántico ("acá ocurrió el error"), no
+         una elección de color de pestaña entre otras 15. Con transparencia
+         (mismo criterio que accent_selected/git_repo_root): es un fondo
+         detrás de texto, no debe tapar la legibilidad. -->
+    <color name="error_highlight">#33E05C5C</color>
+
+    <!-- Syntax highlighting -->
+    <color name="syn_keyword">#C586C0</color>
+    <color name="syn_string">#CE9178</color>
+    <color name="syn_function">#DCDCAA</color>
+    <color name="syn_comment">#6A9955</color>
+    <color name="syn_number">#B5CEA8</color>
+
+    <!-- Paleta fija de colores elegibles por el usuario al crear/guardar un archivo (MVP: 16) -->
+    <color name="tab_01">#E05C5C</color>
+    <color name="tab_02">#E0945C</color>
+    <color name="tab_03">#D7BB3A</color>
+    <color name="tab_04">#A9C23F</color>
+    <color name="tab_05">#6AB04C</color>
+    <color name="tab_06">#4ECDC4</color>
+    <color name="tab_07">#4B8BBE</color>
+    <color name="tab_08">#5C7CE0</color>
+    <color name="tab_09">#8E6FD1</color>
+    <color name="tab_10">#B06FD1</color>
+    <color name="tab_11">#D16FA8</color>
+    <color name="tab_12">#E05C8A</color>
+    <color name="tab_13">#C0C0C8</color>
+    <color name="tab_14">#8A8A98</color>
+    <color name="tab_15">#5C5C68</color>
+    <color name="tab_16">#2E8B8B</color>
+</resources>

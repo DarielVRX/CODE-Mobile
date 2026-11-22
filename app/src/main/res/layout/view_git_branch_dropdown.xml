@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Dropdown de ramas (ver GitActionsController.showBranchDropdown): se
+    infla dentro del mismo overlay patrón que headerActionsPanel/
+    dialogFormContainer (FrameLayout hermano del root, MATCH_PARENT,
+    intercepta touch fuera para cerrar). Ancla SIEMPRE hacia ARRIBA de
+    branchButton (ver openOverlayAbove): si abriera hacia abajo, con el
+    teclado propio ocupando buena parte de la pantalla no queda espacio
+    real debajo de la consola para mostrarlo.
+
+    createBranchRow al FINAL del LinearLayout (no al principio): al abrir
+    hacia arriba, el último hijo es el que queda visualmente más cerca de
+    branchButton — createBranchRow pegado al botón ancla es más fácil de
+    encontrar sin tener que mirar hacia arriba del todo, y su posición
+    sigue siendo fija (no se mueve si la lista de ramas crece o cambia de
+    orden, mismo motivo que antes).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="220dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/bg_elevated"
+    android:elevation="8dp">
+
+    <!-- Alto máximo acotado en código por GitActionsController (igual
+         criterio que consoleMaxHeightPx en ConsoleController): un repo con
+         muchas ramas no debe poder crecer el dropdown fuera de pantalla. -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/branchListRecycler"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_panel" />
+
+    <LinearLayout
+        android:id="@+id/createBranchRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:minHeight="44dp"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_git_new_branch"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="New branch"
+            android:textColor="@color/accent"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</LinearLayout>

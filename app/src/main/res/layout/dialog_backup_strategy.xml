@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Tarjeta de elección de estrategia de backup (una sola vez por repo), ver
+    EditorActivity.showBackupStrategyDialog. Antes era un AlertDialog.Builder
+    con setItems — un AlertDialog es una ventana SEPARADA por encima de toda
+    la Activity, y quedaba tapado/inalcanzable al tacto por
+    bottomControlsColumn (controlBar/customKeyboard), igual que ya les pasaba
+    a los 4 formularios con EditText (ver view_dialog_form.xml) antes de
+    convertirlos a paneles propios. Este diálogo no tiene EditText, así que
+    se había pasado por alto en esa limpieza — mismo problema, mismo fix:
+    vista propia dentro de dialogFormContainer, nunca una ventana aparte.
+
+    No usa view_dialog_form.xml (que trae su propia fila de Cancelar/
+    Guardar): acá no hay "confirmar", cada fila tocada ya resuelve la
+    elección directamente, y no se puede cancelar (ver showBackupStrategyDialog:
+    cancelable=false, se vuelve a preguntar la próxima vez si no se elige).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="top"
+    android:layout_marginTop="24dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:orientation="vertical"
+    android:background="@color/bg_elevated"
+    android:elevation="2dp">
+
+    <TextView
+        android:id="@+id/backupStrategyTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:paddingBottom="0dp"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:text="@string/backup_strategy_title" />
+
+    <TextView
+        android:id="@+id/backupStrategyMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textColor="@color/text_dim"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/backupStrategyOptionInRepo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="16dp"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp"
+        android:text="@string/backup_strategy_option_in_repo" />
+
+    <TextView
+        android:id="@+id/backupStrategyOptionAppPrivate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="16dp"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp"
+        android:text="@string/backup_strategy_option_app_private" />
+
+    <TextView
+        android:id="@+id/backupStrategyOptionVisibleGlobal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="16dp"
+        android:paddingBottom="20dp"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp"
+        android:text="@string/backup_strategy_option_visible_global" />
+
+</LinearLayout>

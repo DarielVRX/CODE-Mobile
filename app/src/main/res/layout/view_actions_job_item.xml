@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Item individual de la lista de jobs de un run (ver
+     ActionsPanelController.JobAdapter) — reusa el mismo shell de panel
+     (view_actions_panel.xml) que la lista de runs, cambiando solo el
+     adapter montado en runsListRecycler. Tocar un job pide su log (ver
+     GitHubActionsRepository.downloadJobLogs) y lo muestra en la consola. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:minHeight="48dp"
+    android:gravity="center_vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <TextView
+        android:id="@+id/jobStatusIcon"
+        android:layout_width="20dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="14sp"
+        android:text="●"
+        android:textColor="@color/text_dim" />
+
+    <TextView
+        android:id="@+id/jobNameText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="10dp"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+</LinearLayout>

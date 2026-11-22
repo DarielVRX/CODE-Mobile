@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- diff: dos columnas lado a lado (antes/después), ícono típico de
+     "compare" en editores e IDEs. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/text_primary"
+        android:strokeWidth="1.8"
+        android:strokeLineJoin="round"
+        android:pathData="M4,4 L11,4 L11,20 L4,20 Z M13,4 L20,4 L20,20 L13,20 Z" />
+    <path
+        android:fillColor="@color/text_primary"
+        android:pathData="M6,9 L9,9 L9,10.5 L6,10.5 Z M15,13.5 L18,13.5 L18,15 L15,15 Z" />
+</vector>

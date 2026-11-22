@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Barra de controles reducida (ver ControlBarView.kt): botón de ocultar
+    CustomKeyboardView (extremo izquierdo, sin equivalente en el teclado
+    nuevo), botón de drag mode (Paso 8: alterna el drag de 1 dedo entre
+    mover cursor y mover contenido), celda de cierre pendiente, botón de
+    configuración del teclado (Paso 7, §5) y botón de rotar pantalla.
+    Tocar el área de texto con el teclado oculto lo vuelve a mostrar (ver
+    EditorActivity/CodeEditText).
+
+    Vive arriba de CustomKeyboardView, como hermana suya dentro de la columna
+    fija al borde inferior (ver activity_editor.xml).
+
+    Los controles usan una altura mínima de 44dp (tamaño táctil recomendado).
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Fila fija, SIN scroll: cada celda usa layout_weight para repartirse el
+         ancho disponible y nunca desbordar en portrait. Los textos se limitan
+         a 1 carácter (o símbolo) para que quepan incluso angostas.
+
+         En landscape, ControlBarView.setVertical(true) cambia esta misma
+         vista a orientación vertical y cada botón pasa a repartirse el
+         ALTO disponible de la columna angosta en vez del ancho (ver esa
+         función: solo cambia orientation + layout_width/height/weight de
+         cada hijo, no reinfla nada). -->
+    <LinearLayout
+        android:id="@+id/controlBarRow"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@color/bg_elevated"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="3dp"
+        android:paddingEnd="3dp">
+
+        <!-- Ocultar teclado: extremo izquierdo. -->
+        <TextView
+            android:id="@+id/hideKeyboardButton"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/bg_symbol_group"
+            android:gravity="center"
+            android:text="⌄"
+            android:textColor="@color/text_dim"
+            android:textSize="18sp" />
+
+        <!-- Drag mode (Paso 8): alterna el drag de 1 dedo sobre el editor
+             entre mover el cursor/selección ("I", modo por defecto) y
+             mover el contenido con scroll ("✥") — ver
+             CodeEditText.dragMode. Texto se sincroniza en
+             ControlBarView.setupDragModeButton/updateDragModeButton. -->
+        <TextView
+            android:id="@+id/dragModeButton"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/bg_symbol_group"
+            android:gravity="center"
+            android:text="I"
+            android:textColor="@color/text_dim"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Celda dedicada de cierre pendiente: muestra el tope de la pila por archivo -->
+        <TextView
+            android:id="@+id/pendingCloserCell"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/bg_symbol_group"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:text=""
+            android:textColor="@color/accent"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:visibility="invisible" />
+
+        <!-- selectToggle (botón "S") se movió primero al header y, desde
+             el Paso 7, al drag-abajo de la tecla A del teclado propio (ver
+             KeyboardLayouts.DEFAULT_DRAG_ACTIONS): ya no es ningún botón
+             visual, en ningún lado. -->
+
+        <!-- Paso 7 (§5): abre SettingsActivity (menú de configuración del
+             teclado) — a la izquierda de rotateButton, pedido explícito.
+             Ver ControlBarView.setupSettingsButton. -->
+        <TextView
+            android:id="@+id/settingsButton"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/bg_symbol_group"
+            android:gravity="center"
+            android:text="⚙"
+            android:textColor="@color/text_dim"
+            android:textSize="18sp" />
+
+        <!-- Rotar pantalla: vive aquí (barra fija) en vez de en la tabbar,
+             donde competía por espacio con las pestañas de ancho variable. -->
+        <TextView
+            android:id="@+id/rotateButton"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_symbol_group"
+            android:gravity="center"
+            android:text="⤾"
+            android:textColor="@color/text_dim"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+</merge>

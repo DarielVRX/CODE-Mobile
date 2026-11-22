@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Layout de SettingsActivity (Paso 7, §5). Mismo patrón de FrameLayout raíz
+    + overlays hermanos que activity_editor.xml (ringOverlay/accentPopup como
+    hermanos directos del root, no hijos de customKeyboard — ver el comentario
+    largo en activity_editor.xml sobre por qué: evita que activarlos infle la
+    medición de customKeyboard y mueva el teclado).
+
+    A diferencia de EditorActivity, esta Activity NO declara
+    windowSoftInputMode="adjustResize|stateAlwaysHidden" en el manifest ni
+    showSoftInputOnFocus=false en su EditText: settingsEditField necesita el
+    IME real del sistema para que el usuario escriba el carácter nuevo de una
+    variante/símbolo (ver ConfigPanelView.showCharEditor) — es la única
+    excepción documentada a la regla general de la app de nunca mostrar el
+    teclado de sistema.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/settingsRootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <LinearLayout
+        android:id="@+id/settingsContentColumn"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Encabezado simple: volver + título. Sin ActionBar propia (el
+             tema de la app ya usa NoActionBar en EditorActivity; se repite
+             el mismo criterio acá para consistencia visual). -->
+        <LinearLayout
+            android:id="@+id/settingsHeaderRow"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/bg_elevated"
+            android:paddingStart="6dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:id="@+id/settingsBackButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:gravity="center"
+                android:text="←"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="8dp"
+                android:text="Keyboard settings"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <!-- Paso 7 (3 estados: default/actual/cambios en memoria,
+                 pedido explícito): un solo botón global, visible solo
+                 mientras hay cambios sin guardar (ver
+                 SettingsActivity.refreshApplyButtonVisibility) — vuelca
+                 TODO el buffer pendiente (PendingKeyboardSettings) al
+                 store real de una vez. GONE por defecto: arranca sin
+                 cambios pendientes. -->
+            <TextView
+                android:id="@+id/applyButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_run_button"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Apply"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Fila fija de ajustes generales, arriba del teclado de
+             configuración: toggle de haptic + botón de reset. Ambos
+             independientes entre sí (reset nunca toca haptic_enabled, ver
+             KeyboardSettingsStore.resetToDefaults). -->
+        <LinearLayout
+            android:id="@+id/settingsGeneralRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/bg"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Vibrate on tap"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+
+            <Switch
+                android:id="@+id/hapticToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/resetDefaultsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/bg"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:text="Reset to defaults"
+            android:textColor="#FF8A8A"
+            android:textSize="14sp" />
+
+        <!-- Hint simple: el usuario toca una tecla del teclado de abajo para
+             editar sus variantes/atajo/anillo. No es un EditText real de
+             trabajo (no hay "código" que editar acá) — solo existe para que
+             el sistema tenga un campo con foco real disponible cuando
+             ConfigPanelView.showCharEditor pide el IME de sistema (ver su
+             EditText propio, que vive DENTRO de ConfigPanelView, no este).
+             Este TextView es solo contenido informativo. -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="Tap a key to view and change its variants, shortcut, or ring."
+            android:textColor="@color/text_dim"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Columna fija al borde inferior: el teclado propio en modo
+         configuración (configMode=true, ver CustomKeyboardView). Mismo
+         patrón de columna fija que bottomControlsColumn en
+         activity_editor.xml, pero sin controlBar: acá no hace falta
+         minimizar/rotar/select — solo se necesita el teclado para elegir
+         qué tecla configurar. -->
+    <LinearLayout
+        android:id="@+id/settingsBottomColumn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
+
+        <!-- suggestionsBar es lateinit var en CustomKeyboardView (ver su
+             doc): necesita una instancia real inyectada, aunque en
+             configMode nunca se use de verdad (el gesto de drag-abajo no
+             es alcanzable para teclas editables en este modo — ver
+             letterKey()). height=0dp: ocupa espacio real cero, solo existe
+             para que la inyección no sea null. -->
+        <com.codemobile.editor.SuggestionsBarView
+            android:id="@+id/settingsSuggestionsBar"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+
+        <com.codemobile.keyboard.CustomKeyboardView
+            android:id="@+id/settingsKeyboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+
+    <!-- Overlays de gesto del teclado, mismo patrón/motivo que
+         activity_editor.xml: hermanos directos del root, MATCH_PARENT,
+         ocultos por defecto, inyectados en código (ver SettingsActivity.
+         bindViews). -->
+    <com.codemobile.keyboard.RingGestureView
+        android:id="@+id/settingsRingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <com.codemobile.keyboard.AccentPopupView
+        android:id="@+id/settingsAccentPopup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- Panel de edición (ConfigPanelView): scrim + tarjeta centrada, mismo
+         patrón de overlay hermano del root que los anteriores. Empieza GONE
+         (ver ConfigPanelView.init). -->
+    <com.codemobile.keyboard.ConfigPanelView
+        android:id="@+id/settingsConfigPanel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="8dp" />
+
+</FrameLayout>

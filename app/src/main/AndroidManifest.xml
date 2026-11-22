@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Acceso general al almacenamiento, como un gestor de archivos / editor de código.
+         MANAGE_EXTERNAL_STORAGE requiere declaración especial en Play Console al publicar;
+         para desarrollo/sideload funciona con la concesión manual en Ajustes. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- Operaciones git largas (clone/push/pull) en segundo plano, con
+         notificación fija mientras corren (ver com.codemobile.git.GitForegroundService).
+         POST_NOTIFICATIONS es obligatorio desde Android 13 (API 33) para
+         mostrar cualquier notificación, incluida la del foreground service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Bug reportado: a los comandos git les faltaba este permiso. JGit
+         (clone/push/pull/fetch, ver GitRepository) necesita acceso a la red
+         para hablar con el remoto — sin esto, toda operación git fallaba
+         silenciosamente o con una excepción de red confusa, nunca por un
+         problema de credenciales o del comando en sí. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Feedback háptico del teclado propio (ver CustomKeyboardView.hapticTap):
+         performHapticFeedback() no lo necesitaba, pero esa API deja la
+         duración real a criterio del fabricante/versión de Android y en
+         muchos dispositivos se siente larga al escribir rápido. Vibrator.
+         vibrate(VibrationEffect) sí la controla de forma explícita y corta,
+         a costa de requerir este permiso (normal, sin diálogo al usuario). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_app"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_app"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.CodeMobile"
+        android:requestLegacyExternalStorage="true">
+
+        <!-- windowSoftInputMode con stateAlwaysHidden (bug investigado y
+             confirmado: el IME real de sistema reaparece al volver del
+             background con un EditText que ya tenía foco desde antes).
+             Desde Android S (API 31), el sistema restaura activamente la
+             visibilidad del IME al recuperar el foco de una tarea si la
+             última vez esa ventana lo tuvo visible — corre a nivel de
+             WindowManagerService/InputMethodManagerService, antes o
+             independiente de onResume()/onWindowFocusChanged(), por lo que
+             el hide reactivo que ya existía (ver
+             EditorActivity.hideResidualSystemIme) no alcanzaba a cubrir
+             todos los casos. AOSP documenta esta restauración como
+             intencional, pero exceptúa explícitamente a ventanas con
+             softInputMode ALWAYS_HIDDEN/STATE_HIDDEN, citando apps con
+             teclado propio (calculadora, dialer) como el caso de uso
+             esperado para ese flag — exactamente esta app. Como
+             CustomKeyboardView es el único teclado que esta Activity
+             muestra (todo EditText tiene showSoftInputOnFocus=false, nunca
+             se llama showSoftInput() del IME real), no hay ningún camino
+             propio que dependa de que el sistema muestre su teclado
+             espontáneamente, así que este flag no debería quitar ninguna
+             funcionalidad existente. hideResidualSystemIme() se deja tal
+             cual como red de seguridad adicional, no se quita con este
+             cambio. -->
+        <activity
+            android:name=".ui.EditorActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"
+            android:theme="@style/Theme.CodeMobile.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Paso 7, §5: a propósito SIN windowSoftInputMode
+             ="...stateAlwaysHidden" (ver el comentario largo arriba, sobre
+             EditorActivity) — esta es la única pantalla de la app que
+             necesita el IME real de sistema (ConfigPanelView.showCharEditor
+             pide foco real para que el usuario tipee el carácter nuevo de
+             una variante/símbolo). -->
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.CodeMobile.NoActionBar" />
+
+        <service
+            android:name=".git.GitForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Descarga de artifacts de GitHub Actions en segundo plano, con
+             notificación propia de progreso (ver
+             com.codemobile.git.ArtifactDownloadService) — separado de
+             GitForegroundService porque puede haber varias descargas
+             activas a la vez, cosa que ese Service no soporta (una sola
+             operación git por vez). -->
+        <service
+            android:name=".git.ArtifactDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+    </application>
+
+</manifest>

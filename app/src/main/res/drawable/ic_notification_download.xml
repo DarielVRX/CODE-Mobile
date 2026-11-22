@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono de notificación para la descarga de artifacts de GitHub Actions
+     (ver ActionsPanelController) — misma convención que
+     ic_notification_git.xml: silueta blanca/transparente, requisito de
+     Android para íconos de notificación. Flecha hacia una bandeja,
+     símbolo estándar de descarga. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,3 L12,13 M12,13 L8,9 M12,13 L16,9 M5,16 L5,19 C5,19.55 5.45,20 6,20 L18,20 C18.55,20 19,19.55 19,19 L19,16"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

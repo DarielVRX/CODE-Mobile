@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Tarjeta de formulario corto (nuevo archivo, nueva carpeta, renombrar,
+    credenciales git) anclada arriba de la pantalla, dentro de
+    dialogFormContainer (ver su comentario en activity_editor.xml). Antes
+    estos 4 formularios eran AlertDialog nativos; un AlertDialog es una
+    ventana propia que tapa bottomControlsColumn (controlBar/
+    customKeyboard) sin importar su visibilidad, porque vive en otra
+    jerarquía de ventana — por eso se reemplaza por esta tarjeta, que es
+    una vista más dentro de la misma Activity y nunca tapa el teclado
+    propio, que queda abajo.
+
+    dialogFormBody es un FrameLayout vacío: EditorActivity infla ahí el
+    contenido específico de cada formulario (dialog_new_file.xml,
+    dialog_new_folder.xml, dialog_git_credentials.xml, reinflados tal
+    cual, con su propio fondo/padding) — este contenedor solo aporta
+    título y la fila de botones, comunes a los 4.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="top"
+    android:layout_marginTop="24dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:orientation="vertical"
+    android:background="@color/bg_elevated"
+    android:elevation="2dp">
+
+    <TextView
+        android:id="@+id/dialogFormTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:text="Title" />
+
+    <FrameLayout
+        android:id="@+id/dialogFormBody"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/dialogFormCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:text="@android:string/cancel"
+            android:textColor="@color/text_dim"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/dialogFormConfirm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:padding="12dp"
+            android:text="@string/action_save"
+            android:textColor="@color/accent"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</LinearLayout>

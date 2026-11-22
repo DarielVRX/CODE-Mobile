@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Panel de atajos git (ver GitActionsController.showShortcutsPanel): mismo
+    patrón de overlay que view_git_branch_dropdown — ancla SIEMPRE hacia
+    ARRIBA de shortcutsButton y hacia la IZQUIERDA (shortcutsButton vive en
+    el extremo derecho de la fila; un panel creciendo a la derecha se
+    saldría de la pantalla).
+
+    Sin <style> propio a propósito: no se encontró un styles.xml existente
+    en el proyecto para confirmar convenciones ya establecidas, así que
+    cada fila repite los mismos atributos inline, igual criterio que el
+    resto de los layouts ya existentes (view_console.xml, activity_editor.xml).
+
+    Cada fila es ahora ícono + texto corto (en vez de emoji + nombre
+    completo del comando) — se deja el texto solo donde el ícono por sí
+    solo no alcanza a distinguir la acción (commit/reset/rm, que además
+    abren un input, no ejecutan directo) o donde abrevia mejor que
+    inventar un ícono ambiguo (log, stash). fetch/diff/push/pull/add
+    quedan con texto más corto: son pares con flecha/signo reconocibles
+    pero igual se deja una palabra, ya que esta app no tiene tooltips.
+
+    Orden: el panel abre hacia ARRIBA desde shortcutsButton, así que el
+    ÚLTIMO hijo del LinearLayout queda visualmente pegado al botón que lo
+    abrió, y el PRIMERO queda más lejos (arriba del todo). Se ordena de
+    más a menos frecuente de abajo hacia arriba: fetch/add/commit/push/pull
+    (ciclo diario) pegados al botón; diff/log (consulta) y
+    stash/rm/reset (menos frecuente, más delicado) arriba del todo.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="200dp"
+    android:layout_height="wrap_content"
+    android:background="@color/bg_elevated"
+    android:elevation="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/shortcutReset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_reset" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Reset" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/shortcutRm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_rm" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Delete file" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/shortcutStash"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_stash" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Stash" />
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/bg_panel" />
+
+        <LinearLayout
+            android:id="@+id/shortcutLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_log" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="History" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/shortcutDiff"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_diff" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Diff" />
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/bg_panel" />
+
+        <LinearLayout
+            android:id="@+id/shortcutPull"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_pull" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Pull" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/shortcutPush"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_push" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Push" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/shortcutCommit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_commit" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Commit" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/shortcutAdd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_add" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Add all" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/shortcutFetch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_git_fetch" android:contentDescription="@null" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textColor="@color/text_primary" android:textSize="13sp" android:text="Fetch" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

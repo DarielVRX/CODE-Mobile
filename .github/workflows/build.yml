@@ -1,0 +1,98 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag para el release (ej. v1.2.0)"
+        required: true
+      release_name:
+        description: "Nombre visible del release (opcional, usa el tag si se deja vacío)"
+        required: false
+      prerelease:
+        description: "Marcar como pre-release"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      # El repo no tiene gradlew/gradlew.bat/gradle-wrapper.jar (solo
+      # gradle/wrapper/gradle-wrapper.properties, apuntando a Gradle 8.7) —
+      # chmod +x gradlew fallaba con "No such file or directory" porque el
+      # wrapper nunca se generó/commiteó. Se genera acá en vez de asumir
+      # que ya existe: instala Gradle con la action oficial y corre
+      # `gradle wrapper` para crear los archivos faltantes antes de usar
+      # ./gradlew en los pasos siguientes. Ideal a futuro: commitear el
+      # wrapper real al repo (es lo estándar en proyectos Android) y borrar
+      # este paso.
+      - name: Set up Gradle (to generate the missing wrapper)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 8.7
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Pinea el keystore de debug a uno fijo (en vez del generado al vuelo
+      # por cada runner), para que la firma de debug no cambie entre builds
+      # y el instalador no la vea como un paquete distinto al actualizar.
+      - name: Decode debug keystore
+        run: |
+          mkdir -p ~/.android
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
+
+  # Solo corre cuando se dispara a mano desde la pestaña Actions (nunca en
+  # push/PR): crea un release de GitHub con el APK adjunto.
+  #
+  # No compila un APK "release" propio: por ahora solo existe el secret
+  # DEBUG_KEYSTORE_BASE64 (sin signingConfig de release en el proyecto), así
+  # que este job reusa el mismo APK debug ya compilado y firmado por el job
+  # build (descargado acá como artifact) en vez de volver a invocar Gradle.
+  # Cuando se configure un keystore de release real, este job deberá pasar
+  # a compilar `assembleRelease` con sus propios secrets, en vez de bajar
+  # el artifact de build.
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download debug APK from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+          path: app-debug
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: ${{ github.event.inputs.release_name || github.event.inputs.release_tag }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+          files: app-debug/*.apk

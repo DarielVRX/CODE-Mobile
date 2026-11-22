@@ -1,0 +1,869 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Layout raíz: FrameLayout en vez de LinearLayout vertical, a propósito. Con
+    un LinearLayout, controlBar era el último hijo del flujo, así que el
+    padding inferior que compensa el teclado (ver EditorActivity.
+    setupKeyboardInsetHandling) terminaba empujándola a ELLA también,
+    haciéndola "flotar" y moverse junto con la animación de apertura del
+    teclado. Lo que se quiere es lo opuesto: controlBar fija SIEMPRE al borde
+    inferior de la pantalla, sin moverse nunca: el teclado, al abrirse, se
+    dibuja por encima de ella (Android ya renderiza el IME por encima de toda
+    la ventana).
+
+    Por eso controlBar vive aquí como hermano directo de contentColumn
+    (gravity="bottom", fuera de su flujo), y el padding del inset del teclado
+    se aplica solo a contentColumn, nunca a controlBar ni al root.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <!-- Todo el contenido normal (tabbar, ruta, explorador, editor, consola).
+         layout_marginBottom arranca en 0dp a propósito: la pantalla inicial
+         es el explorador, que NO tiene controlBar ni CustomKeyboardView
+         visibles, así que no debe reservarles espacio. EditorActivity ajusta
+         este margen EN CÓDIGO (ver updateContentColumnBottomMargin()) a
+         240dp solo cuando se entra en modo editor, y de vuelta a 0dp al
+         volver al explorador — un valor fijo en el XML dejaba esa franja en
+         blanco permanentemente, estuviera o no el teclado visible, porque
+         un margin de XML no depende de la visibility de sus hermanos.
+
+         240dp = 48dp (controlBar reducida, ver view_control_bar.xml: una
+         fila de 48dp) + 192dp (CustomKeyboardView: padding 6dp×2 + 4 filas
+         de 42dp + 3 separaciones de 4dp entre filas — ver las constantes
+         KEY_HEIGHT_DP/KEY_GAP_DP en CustomKeyboardView.kt). Si esas
+         constantes cambian, o si se agrega/quita una fila de teclas, hay
+         que recalcular este valor a mano en EditorActivity.
+         CONTENT_MARGIN_EDITOR_MODE_DP: es una duplicación deliberada (XML
+         estático no puede leer una constante de Kotlin) y por ahora no hay
+         medición real en dispositivo que lo confirme. -->
+    <LinearLayout
+        android:id="@+id/contentColumn"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="0dp"
+        android:orientation="vertical">
+
+        <!-- Tabbar + acciones (se oculta en landscape mientras el teclado está activo).
+             El botón de rotar pantalla vive en la barra de controles (ver más abajo),
+             no aquí: aquí competía por espacio con las pestañas, que cambian de ancho.
+
+             Esta fila tuvo, en su historia, hasta 5 botones sueltos
+             (run/undo/redo/save/folder) que competían por ancho con las
+             pestañas, luego agrupados en un panel colapsable (⋮,
+             headerActionsButton/Panel/Row) para liberar espacio. Paso 13:
+             ese panel se elimina — con el explorador como panel lateral
+             persistente (ya no pantalla completa), Run y el botón de
+             explorador vuelven a ser fijos en esta fila: explorador al
+             extremo izquierdo, Run al extremo derecho, pestañas al medio. -->
+        <LinearLayout
+            android:id="@+id/tabBarRow"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/bg_elevated"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:visibility="gone">
+
+            <!-- Paso 13: botón de explorador (antes 📁 dentro de
+                 headerActionsRow/panel ⋮, ver EditorActivity.folderButton),
+                 ahora fijo al extremo izquierdo de la tabbar — el panel
+                 explorador deja de ser pantalla completa, así que este
+                 botón abre/cierra el panel lateral en vez de cambiar de
+                 "modo pantalla" (ver EditorActivity). -->
+            <TextView
+                android:id="@+id/folderButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:text="📁"
+                android:textSize="18sp" />
+
+            <!-- selectAllButton eliminado (Paso 7): "Seleccionar todo" se
+                 movió al drag-abajo de la tecla A del teclado propio (ver
+                 KeyboardLayouts.DEFAULT_DRAG_ACTIONS / ControlsController.
+                 onDragAction). -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/tabRecycler"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:orientation="horizontal" />
+
+            <!-- Paso 13: Run (antes dentro de headerActionsRow/panel ⋮, ver
+                 abajo), ahora fijo a la derecha de la tabbar — ya no hace
+                 falta pasar por un menú para la acción más usada. Mismo id,
+                 drawable y texto que tenía dentro del panel. -->
+            <TextView
+                android:id="@+id/runButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_run_button"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="@string/action_run"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginStart="6dp" />
+
+            <!-- gitButtonEditor eliminado: los comandos
+                 git operan sobre currentDir (ver GitConsoleParser), que en
+                 el editor no necesariamente es la carpeta que el usuario
+                 quiere usar como repo — solo tiene sentido abrir la consola
+                 git desde el explorador (gitButtonExplorer, ver abajo),
+                 parado ya en la carpeta correcta. -->
+
+        </LinearLayout>
+
+        <!-- Ruta del archivo activo (se oculta en landscape mientras el teclado está activo) -->
+        <TextView
+            android:id="@+id/pathBar"
+            android:layout_width="match_parent"
+            android:layout_height="22dp"
+            android:background="@color/bg"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:textColor="@color/text_dim"
+            android:textSize="11sp"
+            android:text=""
+            android:visibility="gone" />
+
+        <!-- Paso 13: fila horizontal explorador+editor. Antes explorerContainer
+             y editorContainer/editorEmptyPlaceholder eran hermanos
+             verticales directos de contentColumn, mostrados alternadamente
+             (uno GONE mientras el otro es VISIBLE, ver showExplorerMode/
+             showEditorMode). Ahora conviven lado a lado: el explorador es
+             un panel lateral de ancho ajustable que empuja al editor hacia
+             la derecha, en vez de ocupar toda la pantalla. consoleContainer
+             queda FUERA de esta fila (hermano, más abajo) — sigue a ancho
+             completo, sin cambios. -->
+        <LinearLayout
+            android:id="@+id/mainRow"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+        <!-- Contenedor del explorador de archivos. Es la pantalla inicial de la app
+             (no una pestaña "sin título"): se muestra al abrir si no hay archivos
+             abiertos, y también al tocar 📁 con archivos ya abiertos. Paso 13:
+             ancho ajustable en vez de match_parent/weight — ver
+             explorerResizeHandle para el arrastre y
+             ControlsController-equivalente en ExplorerController para los
+             límites min/max (mismo patrón que setupConsoleResizeHandle en
+             ConsoleController, adaptado de height/rawY a width/rawX). -->
+        <LinearLayout
+            android:id="@+id/explorerContainer"
+            android:layout_width="160dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="visible">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+            <!-- Marca grande de "estamos dentro de un repo git", detrás de
+                 la lista (primer hijo del FrameLayout = fondo). Oculto por
+                 defecto; ExplorerController lo muestra mientras currentDir
+                 está dentro de un repo en cualquier profundidad, raíz
+                 incluida (ver FileRepository.findRepoRoot). Alpha bajo:
+                 decorativo, nunca debe competir con el texto/íconos reales
+                 de la lista por encima. Tamaño grande fijo en dp (no
+                 match_parent): se centra solo, sin estirarse ni deformarse
+                 en pantallas muy anchas o muy altas. -->
+            <ImageView
+                android:id="@+id/explorerGitBackground"
+                android:layout_width="180dp"
+                android:layout_height="180dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_git_branch"
+                android:tint="@color/text_dim"
+                android:alpha="0.08"
+                android:visibility="gone"
+                android:contentDescription="@null" />
+
+            <!-- Scroll horizontal para el árbol (ver ExplorerController/
+                 FileExplorerAdapter): la indentación por profundidad hace
+                 que una rama muy desplegada pueda ser más ancha que el
+                 panel visible. El scrollbar nativo de abajo (scrollbars=
+                 "horizontal") solo aparece cuando el contenido realmente
+                 excede el ancho, y su extensión ya es "adaptativa según lo
+                 desplegado" sin cálculo manual: con todo colapsado el
+                 RecyclerView no excede el ancho del panel y no hay nada
+                 que scrollear; cuantas más ramas se expanden, más ancho es
+                 el contenido y más corto se ve el thumb del scrollbar en
+                 proporción. fillViewport para que el RecyclerView (altura)
+                 siga llenando el FrameLayout aunque su contenido no tenga
+                 su propia altura match_parent dentro del scroll. -->
+            <HorizontalScrollView
+                android:id="@+id/explorerTreeScroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scrollbars="horizontal"
+                android:fillViewport="true">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/explorerRecycler"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent" />
+
+            </HorizontalScrollView>
+
+            <!-- Barra de modo multi-selección (pendiente #3): oculta por
+                 defecto, se muestra al entrar en selección (long-press con
+                 ninguna selección activa) y se oculta al cancelar o
+                 completar una acción. Conteo arriba, acciones en una fila
+                 scrolleable debajo (Renombrar solo aparece con 1
+                 seleccionado, ver EditorActivity.updateSelectionUi). -->
+            <LinearLayout
+                android:id="@+id/selectionBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top"
+                android:background="@color/bg_elevated"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/selectionCountText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="6dp"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:text="" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp">
+
+                        <TextView
+                            android:id="@+id/selectionInfoButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:text="Info"
+                            android:textColor="@color/accent"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/selectionRenameButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:text="Rename"
+                            android:textColor="@color/accent"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/selectionCopyButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:text="Copy"
+                            android:textColor="@color/accent"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/selectionMoveButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:text="Move"
+                            android:textColor="@color/accent"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/selectionDeleteButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:text="Delete"
+                            android:textColor="#FF8A8A"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/selectionCancelButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:text="Cancel"
+                            android:textColor="@color/text_dim"
+                            android:textSize="14sp" />
+
+                    </LinearLayout>
+
+                </HorizontalScrollView>
+
+            </LinearLayout>
+
+
+            </FrameLayout>
+
+            <!-- Fila de botones de acción (git/actions/contraer todo/
+                 confirmar-cancelar transferencia). Reubicada debajo del
+                 árbol (antes arriba del todo, ver historial): pedido
+                 explícito del usuario — en la posición original, con el
+                 panel abierto, esta fila y explorerSearchRow quedaban
+                 lejos del pulgar al sostener el teléfono con una mano. -->
+            <LinearLayout
+                android:id="@+id/explorerHeaderRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Abre la consola en modo comandos git (integración GitHub
+                     básica, ver EditorActivity.openGitConsole). Único punto
+                     de entrada a la consola git (antes también existía
+                     gitButtonEditor en el header del editor, eliminado:
+                     los comandos git operan sobre currentDir, así que solo
+                     tiene sentido abrirlos acá, parado en la carpeta
+                     correcta dentro del explorador). -->
+                <TextView
+                    android:id="@+id/gitButtonExplorer"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="44dp"
+                    android:background="@color/bg_elevated"
+                    android:gravity="center"
+                    android:text="⎇"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp" />
+
+                <!-- Abre el panel de GitHub Actions (runs/jobs/logs/
+                     artifacts del repo en currentDir, ver
+                     ActionsPanelController). Mismo criterio que
+                     gitButtonExplorer: solo tiene sentido parado en la
+                     carpeta correcta dentro del explorador. -->
+                <TextView
+                    android:id="@+id/actionsButtonExplorer"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="44dp"
+                    android:background="@color/bg_elevated"
+                    android:gravity="center"
+                    android:text="▶"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp" />
+
+                <!-- Contrae TODAS las ramas expandidas del árbol y decae la
+                     selección a la raíz (ver ExplorerController.
+                     collapseAllAndDeselect) — distinto del Back, que
+                     contrae todo pero deja selectedDir intacto (ver doc de
+                     collapseAll()). Acción explícita de "reiniciar el
+                     árbol" para cuando quedaron muchas ramas desplegadas. -->
+                <TextView
+                    android:id="@+id/collapseAllButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="44dp"
+                    android:background="@color/bg_elevated"
+                    android:gravity="center"
+                    android:text="⊟"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp" />
+
+                <!-- Confirma/cancela copiar o mover al directorio actual
+                     mientras se está eligiendo destino (pendingTransfer !=
+                     null, ver EditorActivity.enterPickDestinationMode/
+                     confirmTransferToCurrentDir/cancelPickDestinationMode).
+                     Reemplazan la vieja destinationBar (franja propia
+                     encima del explorador, con su propio título + fila
+                     Elegir/Cancelar) — dos botones chicos acá, del mismo
+                     tamaño que "Nuevo" y
+                     "Consola", visibles solo durante esa actividad. GONE
+                     por defecto ambos. -->
+                <TextView
+                    android:id="@+id/confirmTransferButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="44dp"
+                    android:background="@drawable/bg_run_button"
+                    android:gravity="center"
+                    android:text="✓"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/cancelTransferButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="44dp"
+                    android:background="@color/bg_elevated"
+                    android:gravity="center"
+                    android:text="✕"
+                    android:textColor="@color/text_dim"
+                    android:textSize="18sp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <!-- Fila de buscador + "+". Reubicada debajo del árbol junto con
+                 explorerHeaderRow (ver comentario de esa fila); mismo
+                 contenido de siempre, solo reordenado. -->
+            <LinearLayout
+                android:id="@+id/explorerSearchRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Buscador (pendiente #3): campo fijo, siempre visible,
+                     filtra la lista en vivo dentro de currentDir de forma
+                     recursiva (ver EditorActivity.refreshExplorer). Vacío =
+                     lista normal, sin filtrar. layout_weight="1" en vez de
+                     un ancho fijo: ocupa todo el espacio que el botón "+" no
+                     necesita, en cualquier ancho de pantalla. -->
+                <EditText
+                    android:id="@+id/explorerSearchBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="44dp"
+                    android:background="@color/bg_panel"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:hint="Search in this folder..."
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_dim"
+                    android:textSize="14sp"
+                    android:singleLine="true"
+                    android:inputType="text"
+                    android:imeOptions="actionSearch" />
+
+                <!-- Botón único de acción principal: abre la lista "Nuevo
+                     archivo" / "Nueva carpeta" (pendiente #3). Ancho fijo en
+                     dp (es un ícono, no texto que pueda necesitar más
+                     espacio); alto wrap_content con padding, igual que el
+                     buscador, para que ambos crezcan juntos con la fuente
+                     del sistema y sigan alineados. -->
+                <TextView
+                    android:id="@+id/createFileButtonBig"
+                    android:layout_width="56dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="44dp"
+                    android:background="@color/bg_elevated"
+                    android:gravity="center"
+                    android:text="＋"
+                    android:textColor="@color/text_primary"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Paso 13: divisor de arrastre horizontal, mismo rol que
+             consoleResizeHandle (ConsoleController) pero para ancho en vez
+             de alto — ver setupExplorerResizeHandle en ExplorerController.
+             16dp: área de toque más cómoda que el 8dp original (pedido
+             explícito del usuario: "ensanchar un poco el área para
+             redimensionar"), ancho fijo (no weight) para no robarle
+             espacio a explorerContainer ni a editorColumn. -->
+        <View
+            android:id="@+id/explorerResizeHandle"
+            android:layout_width="16dp"
+            android:layout_height="match_parent"
+            android:background="@color/bg_elevated" />
+
+        <!-- Columna del editor: antes editorContainer/editorEmptyPlaceholder
+             eran hermanos directos de explorerContainer dentro de
+             contentColumn (vertical); ahora van dentro de esta columna,
+             hermana de explorerContainer dentro de mainRow (horizontal) —
+             mismos ids y misma lógica de visibilidad alternada entre
+             ambos, solo reanidados. -->
+        <LinearLayout
+            android:id="@+id/editorColumn"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Contenedor del editor activo -->
+            <FrameLayout
+                android:id="@+id/editorContainer"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:visibility="gone" />
+
+            <!-- Placeholder mientras no hay ninguna pestaña abierta (ver
+                 TabsController.closeTabNow / EditorActivity.onCreate): hermano
+                 de editorContainer, no hijo — TabsController.renderActiveEditor
+                 hace editorContainer.removeAllViews() en cada cambio de
+                 pestaña, así que un TextView puesto ahí adentro se borraría
+                 solo. Visibilidad alternada a mano junto con editorContainer
+                 (nunca ambos visibles a la vez). -->
+            <TextView
+                android:id="@+id/editorEmptyPlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/editor_empty_placeholder"
+                android:textColor="@color/text_dim"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Panel de consola de ejecución (oculto hasta el primer Run).
+             Paso 13: hermano de mainRow, no de explorerContainer/
+             editorColumn — sigue a ancho completo de pantalla, sin
+             cambios de comportamiento. -->
+        <FrameLayout
+            android:id="@+id/consoleContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- Columna fija al borde inferior: controlBar reducida (select/pending
+         closer/rotar — ver ControlBarView) arriba, CustomKeyboardView abajo.
+         Ya no hay IME de sistema que se dibuje por encima: CustomKeyboardView
+         es una vista más del layout, así que esta columna ocupa espacio real
+         (ver EditorActivity.setContentColumnBottomMargin(), que ajusta en
+         código el margen de contentColumn para dejarle lugar).
+
+         paddingBottom se ajusta en código (ver EditorActivity.
+         setupKeyboardInsetHandling) con el inset de navigationBars(): con
+         setDecorFitsSystemWindows(false), el sistema no reserva espacio para
+         la franja de gestos, así que esta columna se dibujaba parcialmente
+         debajo de ella sin ese padding. -->
+    <LinearLayout
+        android:id="@+id/bottomControlsColumn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
+
+        <!-- Barra de sugerencias de autocompletado: antes vivía "flotante" como hermana de
+             bottomControlsColumn, posicionada a mano en código con un
+             marginBottom calculado (ver positionSuggestionsBar/
+             syncBottomControlsMargin en EditorActivity, ya eliminados)
+             para que quedara pegada arriba del teclado sin reservar
+             espacio cuando no había sugerencias. Ahora es una fila fija
+             más de esta columna, arriba de customKeyboard: cuando no hay
+             sugerencias simplemente colapsa su alto a 0 en vez de ocultarse
+             por fuera del flujo (ver SuggestionsBarView.hide()/show()),
+             pero sigue sin "reservar" espacio real en ese caso porque su
+             alto wrap_content con 0 hijos es 0dp. -->
+        <com.codemobile.editor.SuggestionsBarView
+            android:id="@+id/suggestionsBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- controlBar va DESPUÉS de customKeyboard a propósito: en un
+             LinearLayout vertical, el orden de los hijos
+             define el orden visual de arriba hacia abajo, así que
+             customKeyboard primero + controlBar después deja la barra de
+             controles (minimizar/select/rotar) DEBAJO del teclado, no
+             arriba. -->
+        <com.codemobile.keyboard.CustomKeyboardView
+            android:id="@+id/customKeyboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+        <com.codemobile.ui.ControlBarView
+            android:id="@+id/controlBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- Layout alternativo para landscape (ver ControlsController.
+         applyBottomControlsOrientation): en vez de apilar suggestionsBar +
+         customKeyboard + controlBar verticalmente (lo que en landscape
+         sumaba sus tres altos fijos y dejaba muy poco alto por tecla,
+         comprimiendo el texto de las teclas hasta hacerlo ilegible), se
+         ponen EN PARALELO como 3 columnas: suggestionsBar angosta a la
+         izquierda (con su contenido rotado 270°, ver SuggestionsBarView),
+         customKeyboard en el centro con el ancho restante, controlBar
+         angosta a la derecha (sin rotar: son botones individuales, no
+         texto corrido, apilados verticalmente en vez de en fila).
+
+         suggestionsBar/customKeyboard/controlBar son las MISMAS instancias
+         que arriba: ControlsController.applyBottomControlsOrientation() las
+         mueve de un contenedor al otro en código (una vista no puede tener
+         dos padres a la vez), nunca se duplican. Por eso acá no se
+         declaran de nuevo con esos ids: se insertan en los contenedores
+         vacíos landscapeSuggestionsSlot/landscapeControlsSlot, y
+         customKeyboard se inserta directo como hijo de landscapeKeyboardSlot
+         (weight=1, el ancho restante).
+
+         landscapeSuggestionsSlot/landscapeControlsSlot arrancan en 0dp
+         a propósito: su ancho real lo fija ControlsController en código, a
+         partir de suggestionsBar.expectedHeightPx()/
+         controlBar.expectedWidthPxVertical() — el "espesor" real de cada
+         vista rotada. Un ancho fijo acá en XML (antes 56dp) es una segunda
+         fuente de verdad que puede desalinearse si esas constantes cambian
+         sin que alguien recuerde actualizar también este valor; dejarlos en
+         0dp y que el código los mida fuerza que solo haya un lugar que
+         sepa el tamaño real.
+
+         Empieza GONE: solo se muestra en landscape (ver
+         ControlsController.applyBottomControlsOrientation). -->
+    <LinearLayout
+        android:id="@+id/bottomControlsRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:id="@+id/landscapeSuggestionsSlot"
+            android:layout_width="0dp"
+            android:layout_height="match_parent" />
+
+        <FrameLayout
+            android:id="@+id/landscapeKeyboardSlot"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <FrameLayout
+            android:id="@+id/landscapeControlsSlot"
+            android:layout_width="0dp"
+            android:layout_height="match_parent" />
+
+    </LinearLayout>
+
+    <!-- Overlays de gesto del teclado (anillos de brackets/operadores/nav y
+         popup de variantes por hold de acentos): hermanos directos del
+         FrameLayout raíz, MATCH_PARENT real en ambos ejes, NO hijos de
+         CustomKeyboardView.
+
+         Si vivieran dentro de CustomKeyboardView (un FrameLayout
+         wrap_content), activarlos (visibility=VISIBLE) inflaría la
+         medición de CustomKeyboardView entero, produciendo un salto visible
+         del teclado cada vez que se abre un gesto. Viviendo acá, en el
+         FrameLayout raíz (que ya tiene el tamaño fijo de
+         toda la pantalla, sin relación con el tamaño de CustomKeyboardView),
+         activarlos no mueve ni redimensiona el teclado en absoluto: pueden
+         dibujarse tan arriba como haga falta, incluso tapando
+         momentáneamente suggestionsBar (aceptado explícitamente: de todos
+         modos no se puede usar la barra de sugerencias mientras hay un
+         gesto de anillo/acento en curso).
+
+         CustomKeyboardView ya NO instancia ni posee estas vistas: expone
+         ringOverlay/accentPopup como propiedades públicas (mismo patrón que
+         `target`) que EditorActivity conecta acá, en bindViews(). -->
+    <com.codemobile.keyboard.RingGestureView
+        android:id="@+id/ringOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <com.codemobile.keyboard.AccentPopupView
+        android:id="@+id/accentPopup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- Buscador del editor de código (pedido explícito: ya existía en el
+         explorador, faltaba en el editor). Fila fija arriba del editor,
+         mismo criterio de "vista propia en vez de AlertDialog" que
+         dialogFormContainer/showBackupStrategyDialog (ver esas clases): si
+         fuera una ventana separada tapar­ía bottomControlsColumn y el
+         teclado propio quedaría inalcanzable. Empieza GONE: solo ocupa
+         espacio mientras está abierta (ver EditorActivity.openSearchBar/
+         closeSearchBar). searchMatchCount funciona como indicador ("2/5")
+         y además como mensaje de "sin resultados" cuando count=0. -->
+    <LinearLayout
+        android:id="@+id/searchBarPanel"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_gravity="top"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/bg_elevated"
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp"
+        android:elevation="4dp"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/searchInputBox"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="@string/search_in_file_hint"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_dim"
+            android:textSize="15sp"
+            android:singleLine="true"
+            android:imeOptions="actionNone"
+            android:inputType="text" />
+
+        <TextView
+            android:id="@+id/searchMatchCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/text_dim"
+            android:textSize="13sp"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/searchPrevButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="˄"
+            android:textSize="18sp"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/searchNextButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="˅"
+            android:textSize="18sp"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/searchCloseButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="✕"
+            android:textSize="16sp"
+            android:textColor="@color/text_dim" />
+
+    </LinearLayout>
+
+    <!-- Panel de preview HTML: antes vivía dentro de contentColumn con alto
+         fijo chico, pero un preview de página necesita el espacio completo,
+         no un panel parcial — ahora es un overlay MATCH_PARENT en ambos
+         ejes, hermano directo del FrameLayout raíz, mismo patrón exacto
+         que headerActionsPanel más arriba (ver su comentario: elevation
+         alta para garantizar que quede por encima de todo, incluyendo
+         contentColumn elevado mientras la consola está abierta y
+         bottomControlsColumn/customKeyboard). Oculto por defecto; se
+         muestra entero al presionar Run sobre un .html (ver
+         EditorActivity.showHtmlPreview) y siempre debe poder cerrarse —
+         htmlPreviewClose, dentro de view_html_preview.xml, es ese botón. -->
+    <FrameLayout
+        android:id="@+id/htmlPreviewContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="8dp"
+        android:visibility="gone" />
+
+    <!-- Overlay a pantalla completa para el log de un job de GitHub
+         Actions dividido por steps (ver ActionsLogViewerController) —
+         mismo patrón que htmlPreviewContainer arriba: FrameLayout
+         hermano del root, MATCH_PARENT, oculto por defecto. Un log
+         completo puede ser largo, así que un panel anclado chico (como
+         el dropdown de ramas o los paneles de runs/jobs/artifacts) no
+         alcanza; necesita toda la pantalla igual que el preview HTML. -->
+    <FrameLayout
+        android:id="@+id/actionsLogViewerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="8dp"
+        android:visibility="gone" />
+
+    <!-- Overlay propio para formularios cortos (nuevo archivo, nueva
+         carpeta, renombrar, credenciales git) que antes eran AlertDialog
+         nativos. Un AlertDialog es una VENTANA separada por encima de toda
+         la Activity: tapa bottomControlsColumn (controlBar/customKeyboard)
+         sin importar que el código los ponga VISIBLE, porque esa ventana
+         vive en otra jerarquía — el teclado propio quedaba inalcanzable al
+         tacto detrás de ella. Este FrameLayout, en cambio, es hermano
+         directo del root (mismo patrón que headerActionsPanel/
+         htmlPreviewContainer arriba, elevation 8dp para quedar por encima
+         de contentColumn elevado): el formulario real (dialogFormCard,
+         anclado por EditorActivity con layout_gravity=top vía código, ver
+         showDialogForm) ocupa solo la parte de arriba de la pantalla,
+         dejando bottomControlsColumn abajo totalmente libre y tocable. El
+         resto de este FrameLayout (fuera de la tarjeta) intercepta
+         cualquier touch para poder cerrar el formulario tocando afuera,
+         igual que headerActionsPanel. Oculto por defecto. -->
+    <FrameLayout
+        android:id="@+id/dialogFormContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="8dp"
+        android:visibility="gone" />
+
+    <!-- Overlay propio de GitActionsController (dropdown de ramas / panel
+         de atajos git / input inline de commit-nueva rama-rm): mismo
+         patrón que headerActionsPanel/dialogFormContainer arriba (hermano
+         directo del root, MATCH_PARENT, intercepta touch fuera de su
+         contenido real para cerrar). No se reutiliza headerActionsPanel ni
+         dialogFormContainer a propósito: ambos ya tienen su propio
+         contenido fijo y su propia lógica de cierre (ControlsController /
+         DialogFormHost respectivamente) — mezclar la lógica de
+         GitActionsController ahí adentro acoplaría dos controllers que hoy
+         no se conocen entre sí. elevation=8dp, igual que dialogFormContainer:
+         debe quedar por encima de contentColumn elevado mientras la
+         consola está abierta (la fila de botones vive justo en la consola,
+         así que este overlay se abre casi siempre con ella visible).
+         Oculto por defecto. -->
+    <FrameLayout
+        android:id="@+id/gitActionsOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="8dp"
+        android:visibility="gone" />
+
+</FrameLayout>

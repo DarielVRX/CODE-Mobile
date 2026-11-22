@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diálogo para guardar nombre + email de autoría de commits (ver
+     GitIdentityStore). Distinto del usuario de GitHub de
+     dialog_git_credentials: ese es para autenticar push/pull (PAT), este es
+     la identidad que queda grabada DENTRO de cada commit (igual que "git
+     config user.name/user.email" en Git de escritorio) — pueden ser
+     personas o valores distintos, no hay que asumir que coinciden. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@color/bg_elevated">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Name"
+        android:textColor="@color/text_dim"
+        android:textSize="12sp"
+        android:paddingBottom="4dp" />
+
+    <EditText
+        android:id="@+id/editGitIdentityName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Your name"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_dim"
+        android:inputType="textPersonName"
+        android:singleLine="true" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Email"
+        android:textColor="@color/text_dim"
+        android:textSize="12sp"
+        android:paddingTop="16dp"
+        android:paddingBottom="4dp" />
+
+    <EditText
+        android:id="@+id/editGitIdentityEmail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="you@email.com"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_dim"
+        android:inputType="textEmailAddress"
+        android:singleLine="true" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="They get recorded in every commit you make from the app, just like &#8220;git config user.name/user.email&#8221;. You can change them anytime from here."
+        android:textColor="@color/text_dim"
+        android:textSize="11sp"
+        android:paddingTop="10dp" />
+
+</LinearLayout>

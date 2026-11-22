@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- stash: "caja" (archive box) — representa guardar cambios a un costado
+     temporalmente, ícono típico de "archive"/"stash" en varios clientes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/text_primary"
+        android:strokeWidth="1.8"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M4,7 L20,7 L20,19 L4,19 Z M4,7 L6,4 L18,4 L20,7 M10,12 L14,12" />
+</vector>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Fila de 2 botones (ver GitActionsController), pensada para no competir
+    visualmente con consoleGitInput (misma franja) ni saturar la consola
+    con más de dos elementos nuevos.
+
+    branchButton: ahora un LinearLayout clicable (ícono ic_git_branch,
+    reusa el ya existente en el proyecto — ver explorerGitBackground en
+    activity_editor.xml — + branchButtonText) en vez de un TextView con
+    emoji. El texto de branchButtonText se setea en código por
+    GitActionsController.refreshBranchLabel() cada vez que currentDir
+    cambia o cualquier comando git termina de correr (push/pull/checkout/
+    merge/rebase pueden mover HEAD).
+
+    shortcutsButton: ahora un ImageView (ic_git_shortcuts) en vez de
+    TextView con emoji, sin texto — al tocarlo abre
+    view_git_shortcuts_panel hacia la IZQUIERDA (ver
+    GitActionsController.openOverlayAboveLeft): este botón ya vive en el
+    extremo derecho de la fila, así que un panel hacia la derecha se
+    saldría de la pantalla.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="40dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp"
+    android:background="@color/bg_elevated">
+
+    <!-- layout_weight="1" + ellipsize en branchButtonText: un nombre de
+         rama largo no debe empujar ni tapar shortcutsButton, que siempre
+         debe quedar totalmente visible y tocable. -->
+    <LinearLayout
+        android:id="@+id/branchButton"
+        android:layout_width="0dp"
+        android:layout_height="30dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_pill_outline"
+        android:paddingStart="8dp"
+        android:paddingEnd="10dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_git_branch"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/branchButtonText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="—"
+            android:textColor="@color/accent"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/shortcutsButton"
+        android:layout_width="40dp"
+        android:layout_height="30dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_run_button"
+        android:padding="7dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_git_shortcuts"
+        android:contentDescription="@null" />
+
+</LinearLayout>

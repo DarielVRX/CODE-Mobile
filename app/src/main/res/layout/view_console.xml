@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/bg_panel">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="4dp"
+        android:background="@color/bg_elevated">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/console_title"
+            android:textColor="@color/text_dim"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/consoleClear"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="@string/console_clear"
+            android:textColor="@color/accent"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/consoleClose"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="✕"
+            android:textColor="@color/text_dim"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <!-- Handle de arrastre vertical: ajusta la altura de consoleScroll en tiempo
+         real (ver EditorActivity.setupConsoleResizeHandle). Altura táctil de
+         18dp (más que la línea visual) para que el gesto sea fácil de agarrar
+         sin agrandar el panel visualmente; el color de fondo lo distingue del
+         resto del panel. -->
+    <View
+        android:id="@+id/consoleResizeHandle"
+        android:layout_width="match_parent"
+        android:layout_height="18dp"
+        android:background="@color/bg_elevated" />
+
+    <ScrollView
+        android:id="@+id/consoleScroll"
+        android:layout_width="match_parent"
+        android:layout_height="120dp">
+
+        <TextView
+            android:id="@+id/consoleOutput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:padding="10dp"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            android:text="" />
+
+    </ScrollView>
+
+    <!-- Fila de atajos git (botón de rama activa + botón de atajos): mismo
+         criterio de visibilidad que consoleGitInput, de la cual es
+         complemento — ambas viven en la misma franja lógica ("cómo le
+         hablo a git"), oculta mientras la consola está en modo ejecución
+         de código. Ver GitActionsController. -->
+    <include
+        android:id="@+id/gitActionsRow"
+        layout="@layout/view_git_actions"
+        android:visibility="gone" />
+
+    <!-- Entrada de comandos git (integración GitHub básica): este campo es
+         SOLO para comandos git ("git clone ...", "git add .", "git commit
+         -m \"...\"", etc.), no para ejecutar código Python/JS — eso sigue
+         siendo el botón Run del editor. Ver EditorActivity.onGitCommandSubmit
+         / GitConsoleParser. Oculto por defecto: solo se muestra cuando se
+         abrió la consola desde el botón de git (ver
+         EditorActivity.openGitConsole), no desde Run. -->
+    <EditText
+        android:id="@+id/consoleGitInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="40dp"
+        android:background="@color/bg_elevated"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:hint="git clone / add / commit -m \&quot;...\&quot; / push / pull / status / branch / checkout / merge"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_dim"
+        android:fontFamily="monospace"
+        android:textSize="12sp"
+        android:singleLine="true"
+        android:inputType="text"
+        android:imeOptions="actionGo"
+        android:visibility="gone" />
+
+</LinearLayout>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Pestaña por color elegido por el usuario (ver colorIndexForExtension):
+    el color ya identifica el tipo de archivo, así que ninguna de las dos
+    pestañas (activa/inactiva) muestra la extensión como texto — ambas
+    muestran el NOMBRE. Inactiva: angosta, nombre rotado 270° (de abajo
+    hacia arriba, tabNameVertical) para que entre sin ensanchar la fila de
+    pestañas. Activa: se ensancha y el nombre pasa a horizontal normal
+    (tabName) junto con el botón de cerrar (tabClose) — solo en la activa,
+    porque la inactiva (30dp mínimo) no tiene espacio real para un botón
+    aparte sin volverse ilegible (pedido explícito: "las pestañas son
+    muy pequeñas"). Para cerrar una pestaña que no es la activa, se la activa
+    primero con un tap y luego se usa este botón.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tabRoot"
+    android:layout_width="wrap_content"
+    android:layout_height="38dp"
+    android:layout_marginEnd="6dp"
+    android:background="@drawable/bg_tab"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:minWidth="22dp">
+
+    <!-- Rotación (270°, ver TabBarAdapter) aplicada en código, no acá: el
+         ángulo exacto (-90f) y el requestLayout que lo acompaña son más
+         claros junto al resto del bind. maxWidth acá limita el nombre
+         ANTES de rotar (es decir, limita el alto visual ya rotado) para que
+         un nombre largo no desborde verticalmente la fila de pestañas. -->
+    <TextView
+        android:id="@+id/tabNameVertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:text="main"
+        android:textColor="#CC0D0D10"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:maxWidth="34dp"
+        android:ellipsize="end"
+        android:singleLine="true" />
+
+    <TextView
+        android:id="@+id/tabName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:fontFamily="sans-serif"
+        android:text="main"
+        android:textColor="#D90D0D10"
+        android:textSize="10sp"
+        android:visibility="gone"
+        android:maxWidth="90dp"
+        android:ellipsize="end"
+        android:singleLine="true" />
+
+    <!-- Botón de cerrar (Task #16): mismo visibility=gone que tabName (solo
+         aparece junto con el nombre, es decir, en la pestaña activa) — ver
+         comentario de clase arriba. minWidth/minHeight amplían el área
+         táctil real más allá del texto visible ("×" solo), para no requerir
+         precisión excesiva en un control tan chico. -->
+    <TextView
+        android:id="@+id/tabClose"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:minWidth="20dp"
+        android:minHeight="20dp"
+        android:gravity="center"
+        android:text="×"
+        android:textColor="#D90D0D10"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+</LinearLayout>

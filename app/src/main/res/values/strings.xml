@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Codeck</string>
+    <string name="action_run">Run</string>
+    <string name="action_new_file">New file</string>
+    <string name="action_new_folder">New folder</string>
+    <string name="action_open_folder">Open folder</string>
+    <string name="action_save">Save</string>
+    <string name="action_landscape">Rotate screen</string>
+    <string name="action_select">Select</string>
+    <string name="editor_empty_placeholder">Pick a file from the explorer</string>
+    <string name="backup_strategy_title">Automatic backups</string>
+    <string name="backup_strategy_message">CodeMobile creates automatic backups to safeguard your projects (saving with the Save button is still manual; this is just a safety net). This repo (%1$s) doesn\'t have a backup location chosen yet:</string>
+    <string name="backup_strategy_option_in_repo">In the repo (declared in .gitignore)</string>
+    <string name="backup_strategy_option_app_private">App-private folder</string>
+    <string name="backup_strategy_option_visible_global">Visible folder (CodeMobile/backups)</string>
+    <string name="hint_filename">File name (e.g. main.py)</string>
+    <string name="search_in_file_hint">Search in file</string>
+    <string name="search_no_matches">No results</string>
+    <string name="hint_foldername">Folder name</string>
+    <string name="label_choose_color">Choose a color for this tab</string>
+    <string name="label_choose_type">Choose the file type</string>
+    <string name="hint_file_title">Title</string>
+    <string name="hint_file_extension">ext</string>
+    <string name="permission_needed_title">Storage permission</string>
+    <string name="permission_needed_body">CODE Mobile needs access to your files to open and save your code. Tap continue and grant the permission on the Settings screen.</string>
+    <string name="permission_continue">Continue</string>
+    <string name="console_title">Console</string>
+    <string name="console_clear">Clear</string>
+    <string name="html_preview_title">Preview</string>
+    <string name="html_preview_reload">Reload</string>
+    <string name="no_files">No files open yet. Tap + to create one.</string>
+</resources>
