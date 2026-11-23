@@ -31,12 +31,6 @@ import java.util.regex.Pattern
  * renumera las claves del índice (shiftLinesInsertedAt/shiftLinesRemovedAt)
  * en vez de recalcular todo. suggestionsFor() consulta la unión de ese
  * índice en vez de volver a escanear el archivo.
- *
- * mostFrequentIdentifiers (el fallback de "nada que completar todavía") NO
- * usa este índice — necesita frecuencia de USO real en todo el texto, no
- * declaraciones, así que sigue escaneando el archivo completo; es más barato
- * en estructura (un solo regex global, sin por-línea) y queda a cargo de
- * quien llama diferirlo si hace falta (ver debounce en CodeEditText).
  */
 class Autocomplete(private val lang: Lang) {
 
@@ -147,12 +141,8 @@ class Autocomplete(private val lang: Lang) {
      * recorrer el archivo completo en cada llamada — ambos filtrados por
      * prefijo, sin duplicados, excluyendo una coincidencia exacta con
      * [prefix] (no tiene sentido "completar" una palabra ya completa).
-     *
-     * [fullText] ya no se usa para extraer identificadores (quedó el
-     * parámetro por compatibilidad de firma con el caller, que lo sigue
-     * teniendo a mano); la fuente real es el índice incremental.
      */
-    fun suggestionsFor(prefix: String, @Suppress("UNUSED_PARAMETER") fullText: String): List<String> {
+    fun suggestionsFor(prefix: String): List<String> {
         if (prefix.isEmpty()) return emptyList()
 
         val fromKeywords = keywords.filter { it.startsWith(prefix, ignoreCase = true) }
@@ -172,27 +162,6 @@ class Autocomplete(private val lang: Lang) {
         val all = linkedSetOf<String>()
         for (ids in lineIdentifierIndex.values) all.addAll(ids)
         return all
-    }
-
-    /** Fallback cuando suggestionsFor() no tiene nada que ofrecer (ni keyword
-     *  ni identificador declarado coincide con el prefijo): identificadores
-     *  del propio archivo ordenados por frecuencia de aparición TOTAL
-     *  (cualquier uso, no solo su declaración), para no dejar la
-     *  suggestions bar en blanco. Sin filtro de prefijo — es una lista
-     *  general de "lo más usado acá". */
-    fun mostFrequentIdentifiers(fullText: String, limit: Int = 5): List<String> {
-        val counts = linkedMapOf<String, Int>()
-        val matcher = Pattern.compile(IDENTIFIER).matcher(fullText)
-        while (matcher.find()) {
-            val word = matcher.group()
-            if (word !in keywords) {
-                counts[word] = (counts[word] ?: 0) + 1
-            }
-        }
-        return counts.entries
-            .sortedByDescending { it.value }
-            .take(limit)
-            .map { it.key }
     }
 
     /** Extrae los identificadores que UNA sola [line] declara (antes operaba

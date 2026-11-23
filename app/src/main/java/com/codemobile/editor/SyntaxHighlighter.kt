@@ -51,15 +51,35 @@ class SyntaxHighlighter(private val lang: Lang) {
      *  posición (código inválido/ambiguo, p.ej. mezclar """ y ''' sin
      *  cerrar ninguno) se devuelve el primero de la lista: caso límite sin
      *  una respuesta correcta única, no vale la pena resolverlo mejor. */
-    fun openTripleQuoteDelimiterAt(fullText: CharSequence, position: Int): String? {
+    fun openTripleQuoteDelimiterAt(fullText: CharSequence, position: Int): String? =
+        openTripleQuoteDelimiterAt(fullText, position, rangeStart = 0, startDelimiter = null)
+
+    /** Misma semántica que la sobrecarga de arriba, pero sin reescanear desde
+     *  el principio del documento: [startDelimiter] es el resultado YA
+     *  CONOCIDO de esta misma función en [rangeStart] (p.ej. el delimitador
+     *  abierto al empezar la línea que se está repintando, leído de un
+     *  caché por línea — ver CodeEditText.openDelimiterAtLineEnd), así que
+     *  solo hace falta contar apariciones en el tramo [rangeStart, position)
+     *  para actualizar la paridad, en vez de en todo [0, position). Mismo
+     *  resultado que la sobrecarga de arriba cuando rangeStart=0 y
+     *  startDelimiter=null (caso base, sin nada todavía abierto). */
+    fun openTripleQuoteDelimiterAt(
+        fullText: CharSequence,
+        position: Int,
+        rangeStart: Int,
+        startDelimiter: String?
+    ): String? {
         if (tripleQuoteDelimiters.isEmpty()) return null
-        val limit = position.coerceIn(0, fullText.length)
-        val text = fullText.subSequence(0, limit)
+        val from = rangeStart.coerceIn(0, fullText.length)
+        val to = position.coerceIn(from, fullText.length)
+        val text = fullText.subSequence(from, to)
         for (delimiter in tripleQuoteDelimiters) {
             val matcher = Pattern.compile(Pattern.quote(delimiter)).matcher(text)
             var count = 0
             while (matcher.find()) count++
-            if (count % 2 != 0) return delimiter
+            val wasOpen = delimiter == startDelimiter
+            val isOpenNow = if (count % 2 != 0) !wasOpen else wasOpen
+            if (isOpenNow) return delimiter
         }
         return null
     }

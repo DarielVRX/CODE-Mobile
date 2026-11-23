@@ -368,6 +368,57 @@ class CodeEditText @JvmOverloads constructor(
      *  antemano dónde va a estar el cursor. */
     private val bracketRestartIndex = BracketRestartIndex()
 
+    /** línea (0-based) → delimitador de triple comilla que queda ABIERTO al
+     *  terminar esa línea, o null si ninguno — evita que rehighlightCurrentLine
+     *  y rehighlightRange tengan que llamar a openTripleQuoteDelimiterAt
+     *  reescaneando el documento completo DESDE EL INICIO en cada tecla (ver
+     *  pendiente de rendimiento reportado: lag al escribir en archivos de
+     *  unas pocas miles de líneas, antes de llegar siquiera al umbral de
+     *  "archivo grande"). Se puebla una sola vez al abrir el archivo
+     *  (highlightAll, que ya recorre línea por línea) y se invalida desde la
+     *  línea tocada en cada edición (ver invalidateOpenDelimiterCacheFrom) —
+     *  mismo patrón ya usado para bracketRestartIndex arriba. Índice -1
+     *  representa "antes de la línea 0" (siempre null, nunca hay delimitador
+     *  sin cerrar al principio del documento). */
+    private val openDelimiterAtLineEnd = mutableListOf<String?>()
+
+    /** Delimitador abierto al EMPEZAR [lineIndex] (0-based) dentro de
+     *  [full], es decir, el que quedó abierto al terminar la línea
+     *  anterior. Lee del caché cuando ya tiene esa entrada (caso normal: la
+     *  gran mayoría de las líneas no se tocan nunca y quedan pobladas desde
+     *  highlightAll). Si el caché NO llega hasta ahí (se invalidó desde una
+     *  línea anterior tras una edición, y todavía no se repobló esa línea
+     *  en particular — p.ej. se editó la línea 5 y después, sin volver a
+     *  pasar por la línea 20, algo pide el estado de la línea 20) hay que
+     *  recalcularlo de verdad con el escaneo completo: devolver null acá
+     *  sería un dato INCORRECTO (no solo lento) si en verdad hay un
+     *  delimitador abierto. El resultado se guarda en el caché de una vez,
+     *  así que este camino lento se paga como máximo una sola vez por
+     *  línea entre invalidaciones. lineIndex<=0 es el único caso en que
+     *  null es la respuesta correcta sin necesidad de calcular nada: no hay
+     *  forma de que la línea 0 arranque con algo ya abierto. */
+    private fun cachedOpenDelimiterAtLineStart(lineIndex: Int, full: CharSequence): String? {
+        if (lineIndex <= 0) return null
+        openDelimiterAtLineEnd.getOrNull(lineIndex - 1)?.let { return it }
+        if (lineIndex - 1 < openDelimiterAtLineEnd.size) return null // entrada real, valor null legítimo
+        val lineStart = lineBoundsOf(full, lineIndex).first
+        val recalculated = highlighter.openTripleQuoteDelimiterAt(full, lineStart)
+        setCachedOpenDelimiterAtLineEnd(lineIndex - 1, recalculated)
+        return recalculated
+    }
+
+    /** Descarta del caché todo lo registrado en o después de [lineIndex] —
+     *  mismo motivo y mismo momento que invalidateBracketRestartIndexFrom:
+     *  una edición en esa línea pudo abrir o cerrar un delimitador, lo cual
+     *  invalida cualquier estado cacheado que dependiera de ese tramo en
+     *  adelante. Lo anterior a [lineIndex] sigue siendo válido tal cual. */
+    private fun invalidateOpenDelimiterCacheFrom(lineIndex: Int) {
+        val from = lineIndex.coerceAtLeast(0)
+        if (from < openDelimiterAtLineEnd.size) {
+            openDelimiterAtLineEnd.subList(from, openDelimiterAtLineEnd.size).clear()
+        }
+    }
+
     // ---- Mantenimiento del índice incremental de Autocomplete.kt (ver su
     // doc de clase sobre el bug de rendimiento corregido) ----
 
@@ -389,7 +440,7 @@ class CodeEditText @JvmOverloads constructor(
      *  cuántos '\n' hay antes de esa posición. Mismo criterio que
      *  rehighlightCurrentLine para encontrar límites de línea, pero
      *  devolviendo el índice en vez del rango de offsets. */
-    private fun lineIndexOf(full: String, offset: Int): Int {
+    private fun lineIndexOf(full: CharSequence, offset: Int): Int {
         val safe = offset.coerceIn(0, full.length)
         var count = 0
         var i = 0
@@ -406,7 +457,7 @@ class CodeEditText @JvmOverloads constructor(
      *  pedir los límites de CUALQUIER línea, no solo la del cursor actual,
      *  porque este método se usa para releer la línea que el cursor recién
      *  abandonó. */
-    private fun lineBoundsOf(full: String, lineIndex: Int): IntRange {
+    private fun lineBoundsOf(full: CharSequence, lineIndex: Int): IntRange {
         var start = 0
         var currentLine = 0
         while (currentLine < lineIndex) {
@@ -429,7 +480,12 @@ class CodeEditText @JvmOverloads constructor(
      *  cualquier edición — ver call sites en el watcher y onSelectionChanged. */
     private fun updateAutocompleteIndexIfLineChanged() {
         val full = text?.toString() ?: return
-        val newLine = lineIndexOf(full, selectionStart)
+        // lineIndexNearKnownCursor evita el conteo lineal completo de '\n'
+        // desde el principio del documento en el caso común (el cursor
+        // sigue dentro de la misma línea ya conocida) — ver su doc. Mismo
+        // pendiente de rendimiento que beforeTextChanged: esta función
+        // corre en cada tecla y en cada cambio de selección.
+        val newLine = lineIndexNearKnownCursor(selectionStart, full)
         if (newLine == lastKnownCursorLine) return
         if (lastKnownCursorLine != -1) {
             autocomplete.updateLineOnExit(lastKnownCursorLine, lastKnownCursorLineContent)
@@ -511,7 +567,14 @@ class CodeEditText @JvmOverloads constructor(
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
             if (selfEditing || s == null) return
             textChangeInFlight = true
-            editStartLine = lineIndexOf(s.toString(), start)
+            // editStartLineOf evita el conteo lineal completo de '\n' desde
+            // el principio del documento (y el s.toString() que eso
+            // obligaba) en el caso común de tecleo contiguo dentro de la
+            // misma línea ya conocida — ver su doc. Pendiente reportado:
+            // esta copia completa del documento, en CADA tecla, era una de
+            // las causas del lag al escribir en archivos de unas pocas
+            // miles de líneas.
+            editStartLine = editStartLineOf(start, s)
             editNewlinesRemoved = s.subSequence(start, start + count).count { it == '\n' }
         }
 
@@ -537,6 +600,19 @@ class CodeEditText @JvmOverloads constructor(
 
         override fun afterTextChanged(editable: Editable?) {
             if (selfEditing || editable == null) return
+
+            // Invalida el caché de delimitadores de triple comilla desde
+            // editStartLine+1 en adelante ANTES de repintar (rehighlightRange/
+            // rehighlightCurrentLine, justo abajo): cualquier línea en o
+            // después de ahí puede haber quedado desactualizada si esta
+            // edición abrió o cerró un delimitador, y lo que SÍ se vuelve a
+            // repintar en esta misma pasada (una sola línea, o varias si fue
+            // un pegado multilínea) lo repuebla de nuevo con el valor
+            // correcto a continuación — invalidar después pisaría ese
+            // trabajo recién hecho. Lo que quede fuera del rango repintado
+            // se recalcula perezosamente más adelante, línea por línea,
+            // solo si algo vuelve a pedirlo (ver cachedOpenDelimiterAtLineStart).
+            invalidateOpenDelimiterCacheFrom(editStartLine + 1)
 
             val multilineRange = pastedMultilineRange
             if (multilineRange != null) {
@@ -636,38 +712,18 @@ class CodeEditText @JvmOverloads constructor(
 
     private fun isIdentifierChar(c: Char): Boolean = c.isLetterOrDigit() || c == '_'
 
-    /** true si el cursor está justo después de un espacio/tab/salto de línea,
-     *  o al inicio del archivo — el único momento en que tiene sentido el
-     *  fallback de mostFrequentIdentifiers (ver updateSuggestions): recién
-     *  arrancando una palabra nueva, sin nada todavía escrito que filtrar.
-     *  Deliberadamente NO cubre otros "sin prefijo" como cursor tras '(' o
-     *  ',' — ahí no se está por escribir una palabra suelta. */
-    private fun isAfterWhitespaceOrStart(): Boolean {
-        val editable = text ?: return false
-        val cursor = selectionStart
-        if (cursor != selectionEnd) return false
-        if (cursor == 0) return true
-        return editable[cursor - 1].let { it == ' ' || it == '\t' || it == '\n' }
-    }
-
     /** Recalcula sugerencias para la palabra actual y notifica [onSuggestionsChanged].
-     *  No hace nada si no hay un prefijo válido (cursor no pegado a un identificador),
-     *  salvo el fallback de palabras frecuentes justo tras espacio/tab/salto de línea. */
+     *  No hace nada si no hay un prefijo válido (cursor no pegado a un identificador). */
     private fun updateSuggestions() {
         val callback = onSuggestionsChanged ?: return
         val editable = text ?: return
         val range = currentPrefixRange()
         if (range == null) {
-            // Arrancando una palabra nueva (sin nada aún que filtrar): cae a
-            // los identificadores más usados en el archivo (ver
-            // Autocomplete.mostFrequentIdentifiers), en vez de dejar la
-            // barra en blanco. Cualquier otro "sin prefijo" (cursor tras
-            // '(', ',', etc.) sigue sin mostrar nada, como antes.
-            callback(if (isAfterWhitespaceOrStart()) autocomplete.mostFrequentIdentifiers(editable.toString()) else emptyList())
+            callback(emptyList())
             return
         }
         val prefix = editable.substring(range.first, range.last + 1)
-        callback(autocomplete.suggestionsFor(prefix, editable.toString()))
+        callback(autocomplete.suggestionsFor(prefix))
     }
 
     /** Reemplaza la palabra actual (el mismo prefijo usado para calcular las
@@ -1578,6 +1634,7 @@ class CodeEditText @JvmOverloads constructor(
         // (invalidar dos veces no cuesta nada).
         invalidateMaxScrollXCache()
         lastKnownCursorLine = -1
+        openDelimiterAtLineEnd.clear()
         var lineStart = 0
         // Arranca siempre en null: lineStart=0 es el principio del
         // documento, no puede haber ningún delimitador de triple comilla
@@ -1585,13 +1642,17 @@ class CodeEditText @JvmOverloads constructor(
         // PRÓXIMA línea mirando cómo quedó el documento hasta el final de
         // la línea que se acaba de pintar (ver openTripleQuoteDelimiterAt)
         // — se propaga incrementalmente en vez de recalcular desde el
-        // principio cada vez, aunque el resultado sería el mismo.
+        // principio cada vez, aunque el resultado sería el mismo. Cada
+        // valor se guarda en openDelimiterAtLineEnd para que
+        // rehighlightCurrentLine/rehighlightRange lo reusen después sin
+        // reescanear (ver doc de ese caché).
         var openDelimiter: String? = null
         while (lineStart <= full.length) {
             var lineEnd = full.indexOf('\n', lineStart)
             if (lineEnd == -1) lineEnd = full.length
             highlighter.highlightLine(editable, lineStart, lineEnd, openDelimiter)
             openDelimiter = highlighter.openTripleQuoteDelimiterAt(full, lineEnd)
+            openDelimiterAtLineEnd.add(openDelimiter)
             if (lineEnd >= full.length) break
             lineStart = lineEnd + 1
         }
@@ -1606,14 +1667,66 @@ class CodeEditText @JvmOverloads constructor(
         // A diferencia de highlightAll (que arrastra el estado de la línea
         // anterior sin volver a escanear desde cero), esta función solo
         // repinta UNA línea sin haber recorrido las anteriores en esta
-        // pasada, así que el estado "¿qué delimitador vengo arrastrando
-        // abierto, si alguno?" se calcula de una sola vez escaneando el
-        // documento completo hasta lineStart (ver openTripleQuoteDelimiterAt)
-        // — más caro por llamada, pero esta función ya corre por cada
-        // tecla, no por cada línea del documento, así que el costo es el
-        // mismo orden.
-        val openDelimiter = highlighter.openTripleQuoteDelimiterAt(full, lineStart)
+        // pasada — pero en vez de recalcular "¿qué delimitador vengo
+        // arrastrando abierto?" escaneando el documento completo hasta
+        // lineStart en cada tecla, se lee del caché poblado por highlightAll
+        // (ver doc de openDelimiterAtLineEnd): esa línea no cambió en esta
+        // edición (solo cambió la línea del cursor), así que el valor
+        // cacheado sigue siendo válido.
+        val lineIndex = editStartLineOf(lineStart, full)
+        val openDelimiter = cachedOpenDelimiterAtLineStart(lineIndex, full)
         highlighter.highlightLine(editable, lineStart, lineEnd, openDelimiter)
+        // Esta línea sí pudo cambiar su propio delimitador de salida (p.ej.
+        // se acaba de abrir o cerrar una triple comilla) — se recalcula
+        // SOLO para esta línea (barato: un escaneo del largo de la línea,
+        // no del documento) y se guarda en el caché para que la línea
+        // siguiente, si se la vuelve a tocar, lea el valor correcto.
+        val newOpenDelimiterAtEnd = highlighter.openTripleQuoteDelimiterAt(full, lineEnd, lineStart, openDelimiter)
+        setCachedOpenDelimiterAtLineEnd(lineIndex, newOpenDelimiterAtEnd)
+    }
+
+    /** Número de línea (0-based) de [lineStart] dentro de [full], contando
+     *  SOLO hacia atrás desde lastKnownCursorLine cuando esa línea es la
+     *  tocada (caso normal de tecleo contiguo, el más frecuente) — evita
+     *  recontar '\n' desde el principio del documento. Si lastKnownCursorLine
+     *  todavía no está sincronizada con [lineStart] (selección recién
+     *  movida, antes de que el watcher la actualice), cae al conteo
+     *  completo, igual que antes. */
+    private fun editStartLineOf(lineStart: Int, full: CharSequence): Int {
+        if (lastKnownCursorLine >= 0) {
+            val knownBounds = lineBoundsOf(full, lastKnownCursorLine)
+            if (knownBounds.first == lineStart) return lastKnownCursorLine
+        }
+        return lineIndexOf(full, lineStart)
+    }
+
+    /** Mismo atajo que [editStartLineOf], pero para una posición CUALQUIERA
+     *  dentro de la línea (el cursor, no necesariamente su inicio) — usado
+     *  por updateAutocompleteIndexIfLineChanged, que necesita saber en qué
+     *  línea cae selectionStart, no dónde empieza un tramo editado. Si
+     *  [position] sigue dentro del rango de lastKnownCursorLine (caso
+     *  común: el cursor se movió dentro de la misma línea, o ni se movió),
+     *  evita el conteo completo de '\n' desde el principio del documento. */
+    private fun lineIndexNearKnownCursor(position: Int, full: CharSequence): Int {
+        if (lastKnownCursorLine >= 0) {
+            val knownBounds = lineBoundsOf(full, lastKnownCursorLine)
+            if (position in knownBounds.first..knownBounds.last) return lastKnownCursorLine
+            // También cubre el caso borde de pararse justo al final de la
+            // última línea del documento (lineBoundsOf da un rango vacío
+            // start..start-1 ahí, que el "in" de arriba nunca matchea).
+            if (knownBounds.isEmpty() && position == knownBounds.first) return lastKnownCursorLine
+        }
+        return lineIndexOf(full, position)
+    }
+
+    /** Guarda [delimiter] como el estado de salida de [lineIndex] en el
+     *  caché, extendiéndolo con null si todavía no llegaba tan lejos (caso
+     *  de una línea nueva recién creada, p.ej. al presionar Enter). */
+    private fun setCachedOpenDelimiterAtLineEnd(lineIndex: Int, delimiter: String?) {
+        while (openDelimiterAtLineEnd.size <= lineIndex) {
+            openDelimiterAtLineEnd.add(null)
+        }
+        openDelimiterAtLineEnd[lineIndex] = delimiter
     }
 
     /** Resalta todas las líneas tocadas por el rango [rangeStart, rangeEnd)
@@ -1627,18 +1740,22 @@ class CodeEditText @JvmOverloads constructor(
         val to = rangeEnd.coerceIn(0, full.length)
         var lineStart = full.lastIndexOf('\n', (from - 1).coerceAtLeast(0)).let { if (it == -1) 0 else it + 1 }
         // Mismo motivo que en rehighlightCurrentLine: el rango puede
-        // empezar en medio del documento, así que el estado inicial sí
-        // necesita el escaneo completo hasta lineStart. De ahí en
-        // adelante, dentro del propio bucle, se propaga igual que en
-        // highlightAll.
-        var openDelimiter = highlighter.openTripleQuoteDelimiterAt(full, lineStart)
+        // empezar en medio del documento, pero el estado inicial se lee del
+        // caché por línea en vez de reescanear desde el principio (ver doc
+        // de openDelimiterAtLineEnd). De ahí en adelante, dentro del propio
+        // bucle, se propaga igual que en highlightAll, guardando cada
+        // resultado en el caché para que quede consistente tras el pegado.
+        var lineIndex = editStartLineOf(lineStart, full)
+        var openDelimiter = cachedOpenDelimiterAtLineStart(lineIndex, full)
         while (lineStart <= to) {
             var lineEnd = full.indexOf('\n', lineStart)
             if (lineEnd == -1) lineEnd = full.length
             highlighter.highlightLine(editable, lineStart, lineEnd, openDelimiter)
-            openDelimiter = highlighter.openTripleQuoteDelimiterAt(full, lineEnd)
+            openDelimiter = highlighter.openTripleQuoteDelimiterAt(full, lineEnd, lineStart, openDelimiter)
+            setCachedOpenDelimiterAtLineEnd(lineIndex, openDelimiter)
             if (lineEnd >= full.length) break
             lineStart = lineEnd + 1
+            lineIndex++
         }
     }
 
